@@ -1,0 +1,112 @@
+1️⃣ Conteo de filas
+--Oil
+SELECT COUNT(*) FROM `da-port-cnh-dev.cnh_staging.oil_production_ext`;
+210905
+SELECT COUNT(*) FROM `da-port-cnh-dev.cnh_bronze.oil_production_bz`;
+210905
+-- Gas
+SELECT COUNT(*) FROM `da-port-cnh-dev.cnh_staging.gas_production_ext`;
+210906
+SELECT COUNT(*) FROM `da-port-cnh-dev.cnh_bronze.gas_production_bz`;
+210906
+
+2️⃣ Rango temporal (historia completa intacta)
+-- Oil
+SELECT MIN(fecha), MAX(fecha) FROM `da-port-cnh-dev.cnh_staging.oil_production_ext`;
+1	1960-01-01	2025-01-01
+SELECT MIN(fecha), MAX(fecha) FROM `da-port-cnh-dev.cnh_bronze.oil_production_bz`;
+1	1960-01-01	2025-01-01
+
+-- Gas
+SELECT MIN(fecha), MAX(fecha) FROM `da-port-cnh-dev.cnh_staging.gas_production_ext`;
+1	1960-01-01	2025-01-01
+SELECT MIN(fecha), MAX(fecha) FROM `da-port-cnh-dev.cnh_bronze.gas_production_bz`;
+1960-01-01	2025-01-01
+
+3️⃣ Comparación de NULLs por columna (estructura de datos)
+
+SELECT
+  COUNTIF(petroleo_mbd IS NULL) AS n_null_petroleo_stg,
+  COUNTIF(liquidos_mbd IS NULL) AS n_null_liquidos_stg,
+  COUNTIF(condensado_mbd IS NULL) AS n_null_condensado_stg
+FROM `da-port-cnh-dev.cnh_staging.oil_production_ext`;
+Fila	n_null_petroleo_stg	n_null_liquidos_stg	n_null_condensado_stg
+1	0	0	170138
+-- Bronze
+SELECT
+  COUNTIF(petroleo_mbd IS NULL) AS n_null_petroleo_bz,
+  COUNTIF(liquidos_mbd IS NULL) AS n_null_liquidos_bz,
+  COUNTIF(condensado_mbd IS NULL) AS n_null_condensado_bz
+FROM `da-port-cnh-dev.cnh_bronze.oil_production_bz`;
+Fila	n_null_petroleo_bz	n_null_liquidos_bz	n_null_condensado_bz
+1	0	0	170138	
+
+SELECT
+  COUNTIF(gas_natural_sin_nitrogeno_mmpcd IS NULL) AS n_null_gas_sin_nitrogeno_stg,
+  COUNTIF(nitrogeno_mmpcd IS NULL) AS n_null_nitrogeno_stg
+FROM `da-port-cnh-dev.cnh_staging.gas_production_ext`;
+1	0	170143	
+
+-- GAS - BRONZE
+SELECT
+  COUNTIF(gas_natural_sin_nitrogeno_mmpcd IS NULL) AS n_null_gas_sin_nitrogeno_bz,
+  COUNTIF(nitrogeno_mmpcd IS NULL) AS n_null_nitrogeno_bz
+FROM `da-port-cnh-dev.cnh_bronze.gas_production_bz`;
+1	0	170143
+
+4️⃣ Detección de valores negativos (regla reject_negative_measures)
+
+
+SELECT *
+FROM `da-port-cnh-dev.cnh_bronze.oil_production_bz`
+WHERE petroleo_mbd < 0
+   OR liquidos_mbd < 0
+   OR condensado_mbd < 0
+LIMIT 50;
+No hay datos 
+
+-- Gas negativos
+SELECT *
+FROM `da-port-cnh-dev.cnh_bronze.gas_production_bz`
+WHERE gas_natural_sin_nitrogeno_mmpcd < 0
+   OR nitrogeno_mmpcd < 0
+LIMIT 50;
+No hay datos
+
+5️⃣ Valores muy pequeños (precisión NUMERIC)
+
+
+SELECT fecha, campo, operador, petroleo_mbd, liquidos_mbd, condensado_mbd
+FROM `da-port-cnh-dev.cnh_bronze.oil_production_bz`
+WHERE petroleo_mbd > 0
+ORDER BY petroleo_mbd ASC
+LIMIT 20;
+Fila	fecha	campo	operador	petroleo_mbd	liquidos_mbd	condensado_mbd
+1	1977-07-01	IXHUATLAN	PEMEX EXPLORACIÓN Y PRODUCCIÓN	0.00003	0.00003
+
+SELECT fecha, campo, operador, gas_natural_sin_nitrogeno_mmpcd, nitrogeno_mmpcd
+FROM `da-port-cnh-dev.cnh_bronze.gas_production_bz`
+WHERE gas_natural_sin_nitrogeno_mmpcd > 0
+ORDER BY gas_natural_sin_nitrogeno_mmpcd ASC
+LIMIT 20;
+Fila	fecha	campo	operador	gas_natural_sin_nitrogeno_mmpcd	nitrogeno_mmpcd
+1	2025-01-01	TLATITOK	PEMEX EXPLORACIÓN Y PRODUCCIÓN	0.000000001	0
+
+Fila	fecha	campo	operador	petroleo_mbd	liquidos_mbd	condensado_mbd
+1	1977-07-01	IXHUATLAN	PEMEX EXPLORACIÓN Y PRODUCCIÓN	0.00003	0.00003
+
+
+
+
+
+Tipo de tabla
+Particionada
+Particionada por
+DAY
+Particionada en el campo
+fecha
+Vencimiento de la partición
+Las particiones no vencen
+Filtro de partición
+No es obligatorio
+Agrupada por Campo Operador

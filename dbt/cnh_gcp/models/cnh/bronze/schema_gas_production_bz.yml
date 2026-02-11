@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: gas_production_bz
+    description: >
+      Tabla Bronze de producción de gas (CNH). 
+      Utiliza una arquitectura de Claim & Commit basada en Object Tables para garantizar 
+      trazabilidad total y procesamiento incremental confiable.
+
+    columns:
+      # ──────────── Claves y dimensiones de negocio ────────────
+      - name: fecha
+        description: "Fecha de la producción (partición de la tabla)."
+        tests:
+          - not_null
+
+      - name: cuenca
+        description: "Cuenca geológica donde se encuentra el campo."
+
+      - name: ubicacion
+        description: "Ubicación geográfica (Terrestre/Aguas Someras/etc)."
+
+      - name: campo
+        description: "Nombre del campo de producción."
+        tests:
+          - not_null
+
+      - name: operador
+        description: "Empresa operadora responsable de la producción."
+        tests:
+          - not_null
+
+      # ──────────── Métricas de producción de Gas ────────────
+      - name: gas_natural_sin_nitrogeno_mmpcd
+        description: "Producción de gas natural sin nitrógeno en millones de pies cúbicos diarios (Mmpcd)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+      - name: nitrogeno_mmpcd
+        description: "Producción de nitrógeno en Mmpcd."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+
+      # ──────────── Metadatos de Auditoría y Trazabilidad (Sincronizado con Oil) ────────────
+      - name: source_filename
+        description: "Ruta absoluta del archivo original en Cloud Storage (URI)."
+        tests:
+          - not_null
+
+      - name: file_modified_at
+        description: "Timestamp nativo de GCS que indica cuándo se modificó el archivo por última vez."
+        tests:
+          - not_null
+
+      - name: run_id
+        description: "Identificador único de la ejecución (invocation_id) para rastrear el ciclo de carga."
+        tests:
+          - not_null
+
+      - name: ingestion_timestamp_utc
+        description: "Fecha y hora exacta en la que el registro fue insertado en la capa Bronze."
+        tests:
+          - not_null

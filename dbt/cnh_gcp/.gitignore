@@ -1,0 +1,26 @@
+# dbt artifacts
+target/
+dbt_packages/
+logs/
+
+# dbt runtime (outside project folder)
+dbt/logs/
+
+# python / env
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# credentials / secrets
+**/profiles.yml
+**/*.key
+**/*.pem
+**/*.p12
+**/*secret*
+**/*credential*

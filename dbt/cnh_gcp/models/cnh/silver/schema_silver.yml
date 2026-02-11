@@ -1,0 +1,125 @@
+version: 2
+
+models:
+  # -----------------------------
+  # Silver – Oil
+  # -----------------------------
+  - name: oil_production_sv
+    description: "Capa Silver de producción de petróleo y líquidos. Limpieza de nulos y preparación para unificación."
+    columns:
+      - name: fecha
+        description: "Fecha de producción."
+        tests:
+          - not_null
+
+      - name: campo
+        description: "Campo de producción."
+        tests:
+          - not_null
+
+      - name: operador
+        description: "Operador del campo."
+        tests:
+          - not_null
+
+      - name: petroleo_mbd
+        description: "Producción de petróleo (miles de barriles diarios)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+      - name: liquidos_mbd
+        description: "Producción de líquidos totales (miles de barriles diarios)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+      - name: condensado_mbd
+        description: "Producción de condensado (miles de barriles diarios)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+  # -----------------------------
+  # Silver – Gas
+  # -----------------------------
+  - name: gas_production_sv
+    description: "Capa Silver de producción de gas. Limpieza de nulos y normalización de métricas."
+    columns:
+      - name: fecha
+        description: "Fecha de producción."
+        tests:
+          - not_null
+
+      - name: campo
+        description: "Campo de producción."
+        tests:
+          - not_null
+
+      - name: operador
+        description: "Operador del campo."
+        tests:
+          - not_null
+
+      - name: gas_natural_sin_nitrogeno_mmpcd
+        description: "Gas natural sin nitrógeno (mmpcd)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+      - name: nitrogeno_mmpcd
+        description: "Nitrógeno (mmpcd)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+  # -----------------------------
+  # Silver – Producción unificada
+  # -----------------------------
+  - name: produccion_unificada_sv
+    description: "Tabla Silver unificada de producción de Oil + Gas por fecha, cuenca, ubicación, campo y operador."
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ["fecha", "cuenca", "ubicacion", "campo", "operador"]
+
+    columns:
+      - name: fecha
+        description: "Fecha de producción."
+        tests:
+          - not_null
+
+      - name: campo
+        description: "Campo de producción."
+        tests:
+          - not_null
+
+      - name: operador
+        description: "Operador del campo."
+        tests:
+          - not_null
+
+      - name: produccion_liquidos_total_mbd
+        description: "Producción total de líquidos (petróleo + condensado)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+      - name: produccion_gas_total_mmpcd
+        description: "Producción total de gas (gas natural sin N2 + nitrógeno)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true

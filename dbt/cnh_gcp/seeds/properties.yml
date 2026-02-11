@@ -1,0 +1,17 @@
+version: 2
+
+seeds:
+  - name: cat_campos_cnh  # Debe ser el mismo nombre que tu archivo .csv
+    description: "Catálogo maestro de campos CNH.
+                  Esta tabla gobierna la validez de registros en la capa Silver.
+                  Cualquier campo no presente aquí se considera fuera de dominio."
+    columns:
+      - name: campo
+        description: "Nombre único del campo (llave de cruce)."
+        tests:
+          - unique
+          - not_null
+      - name: cuenca
+        description: "Provincia petrolera a la que pertenece el campo."
+      - name: ubicacion
+        description: "Tipo de terreno (Terrestre, Aguas Someras, etc.)."

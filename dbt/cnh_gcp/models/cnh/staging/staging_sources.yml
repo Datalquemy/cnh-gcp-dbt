@@ -1,0 +1,25 @@
+version: 2
+
+sources:
+  - name: cnh_staging
+    description: "Capa Staging: Datos crudos e inventarios nativos"
+    schema: cnh_staging
+    tables:
+      # --- Ajustados para coincidir con BigQuery ---
+      - name: ext_oil_production_raw
+        description: "Tabla externa de petróleo."
+      - name: ext_gas_production_raw
+        description: "Tabla externa de gas."
+      
+      # --- Inventarios (Object Tables) ---
+      - name: obj_oil_inventory
+        description: "Object Table de petróleo."
+      - name: obj_gas_inventory
+        description: "Object Table de gas."
+
+  - name: control_plane
+    schema: cnh_staging
+    tables:
+      - name: bronze_cnh_manifest
+      - name: bronze_quarantine
+      - name: dq_run_log_bronze

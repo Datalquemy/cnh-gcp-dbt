@@ -1,0 +1,293 @@
+Va, Dr. Emmanuel, lo aterrizamos otra vez y lo dejamos limpio, con:
+
+1. la **estructura de carpetas actualizada** (la que ya acordamos: `staging/cnh/oil/production/`, etc.),
+2. el **enfoque consola primero** (sin Terraform por ahora),
+3. y el **sabor empresarial** tipo AWS Organizations, pero en GCP.
+
+Te lo reescribo sobre tu plan inicial de hace una semana 👇
+
+---
+
+## 🌎 Contexto general (reafirmado)
+
+**Proyecto:** *CNH Oil & Gas Data Analysis en GCP*
+**Objetivo:** replicar y optimizar el pipeline que ya hiciste en AWS/Databricks, pero usando **servicios nativos de GCP** (Storage, BigQuery, Dataproc) para mostrar que sabes hacerlo en otra nube.
+**Meta:** arquitectura clara, modular, con capas **Staging → Bronze → Silver → Gold**, y con seguridad basada en **Service Accounts + IAM**.
+
+---
+
+## 🧭 Estrategia general del ETL en GCP (versión afinada)
+
+### 1. Visión de arquitectura (conceptual)
+
+| Etapa                       | Objetivo                                                                | Servicio principal             | Complementos                            |
+| --------------------------- | ----------------------------------------------------------------------- | ------------------------------ | --------------------------------------- |
+| **Ingesta (RAW / Staging)** | Recibir los archivos CNH tal cual vienen (CSV, XLSX, ZIP)               | **Cloud Storage** (`staging/`) | (después) Cloud Functions / Cloud Run   |
+| **Bronze**                  | Estandarizar formato y nombres, pasar a Parquet, separar oil/gas        | **Cloud Storage** (`bronze/`)  | Dataproc / Dataflow / BigQuery externo  |
+| **Silver**                  | Limpieza, joins, deduplicación, enriquecer con catálogos                | **BigQuery**                   | Dataproc si la transformación es pesada |
+| **Gold**                    | Tablas y vistas analíticas listas para BI (operador, cuenca, pozo, año) | **BigQuery**                   | Looker Studio / Power BI                |
+
+Diferencia clave con AWS: en GCP **no necesitamos Glue Crawler**, porque BigQuery puede leer directamente del bucket y adivinar el esquema.
+
+---
+
+### 2. Diseño de bucket y **estructura de carpetas actual**
+
+En lugar de la versión genérica que pusimos al principio (`raw/fuente_original`, etc.), ahora usamos la que acordamos para CNH:
+
+```text
+gs://da-port-cnh-dev/
+├── staging/
+│   └── cnh/
+│       ├── oil/
+│       │   └── production/
+│       └── gas/
+│           └── production/
+├── bronze/
+│   ├── oil/
+│   │   ├── production/
+│   │   ├── wells/
+│   │   ├── operators/
+│   │   └── basins/
+│   └── gas/
+│       ├── production/
+│       ├── wells/
+│       ├── operators/
+│       └── basins/
+├── silver/
+│   ├── oil/
+│   └── gas/
+├── gold/
+│   ├── oil/
+│   └── gas/
+└── logs/
+```
+
+💡 Esto es lo mismo que querías hacer en AWS con `domain=oil`, `dataset=production`, pero escrito de forma más natural para GCP (sin `domain=` ni `dataset=`).
+
+---
+
+### 3. Estrategia de procesamiento (paso a paso)
+
+#### 🔹 3.1 Ingesta (Staging)
+
+* Subes los CSV/XLSX **a mano desde la consola** a:
+
+  * `staging/cnh/oil/production/`
+  * `staging/cnh/gas/production/`
+* Esto es tu “capa sucia”, igual que en AWS.
+
+#### 🔹 3.2 Exponer en BigQuery (equivalente al crawler)
+
+* Creas en BigQuery un dataset: `cnh_staging`
+* Desde la consola de BigQuery: **Crear tabla → Fuente: Cloud Storage → URI:**
+  `gs://da-port-cnh-dev/staging/cnh/oil/production/*.csv`
+  y marcas **Tabla externa**
+* BigQuery ya ve tus datos, sin Glue.
+
+#### 🔹 3.3 Bronze
+
+* Tomas lo de `cnh_staging` y lo conviertes a tablas “bonitas”:
+
+  * columnas tipadas,
+  * nombres estándar,
+  * sin filas vacías
+* Guardas el resultado:
+
+  * o en **Cloud Storage** como Parquet en `bronze/oil/production/`
+  * o directamente como tabla interna en **BigQuery** (dataset `cnh_bronze`)
+
+#### 🔹 3.4 Silver → Gold
+
+* Aquí sí te conviene **BigQuery puro**: SQL para unir pozo + operador + cuenca.
+* Guardas las tablas ya listas en el dataset `cnh_gold`.
+* De ahí se conectará Looker Studio.
+
+---
+
+### 4. Gobierno, seguridad y “onda empresarial” (sin Terraform todavía)
+
+Tú quieres que se parezca a lo que hicimos con **AWS Organizations**. En GCP lo haremos así:
+
+1. **Organization ya la tienes** (porque tu cuenta es Workspace: `datalquemy.com`).
+2. Creas una **carpeta** (folder) llamada, por ejemplo, `Data-Alive`.
+3. Metes tu proyecto `da-port-cnh-dev` dentro de ese folder.
+4. En ese folder pones **políticas de org**:
+
+   * “Ningún bucket público”
+   * “Solo región us-central1”
+5. En el **proyecto** usas **Service Accounts**:
+
+   * `sa-cnh-etl@...`
+   * le das solo:
+
+     * `Administrador de objetos de almacenamiento` en `bronze/**`, `silver/**`, `gold/**`
+     * `Lector de objetos de almacenamiento` en `staging/cnh/**`
+     * `Usuario de BigQuery` en los datasets
+
+➡️ Con eso ya tienes el “look & feel” enterprise, pero **hecho desde consola**, no con Terraform.
+
+---
+
+### 5. Evolución (igual que el plan original, pero ordenado)
+
+| Fase            | Qué hacemos                                                       | Herramienta        |
+| --------------- | ----------------------------------------------------------------- | ------------------ |
+| **MVP (ahora)** | Crear bucket + carpetas + dataset BQ + SA + primera tabla externa | Consola GCP        |
+| **Fase 2**      | Meter Dataproc / BigQuery para pasar de staging → bronze          | Consola GCP        |
+| **Fase 3**      | Orquestación (Cloud Composer) y automatización de cargas          | Consola + Composer |
+| **Fase 4**      | Terraformizar lo que ya probamos                                  | Terraform GCP      |
+| **Fase 5**      | ML / Vertex / reporting avanzado                                  | Vertex / Looker    |
+
+---
+
+### 6. Documentación que vamos a ir dejando
+
+* `ETL_CNH_GCP_Objectives_Scope_v1.1.md` (la piedra angular)
+* `docs/gcp_datalake_structure.md` (solo la jerarquía de carpetas)
+* `logs/2025-11-09-gcp-setup.md` (bitácoras, como en AWS)
+
+---
+
+Si te fijas, lo único que hicimos fue:
+
+* mantener tu **idea original**,
+* cambiar la **ruta de carpetas** a la que sí estás creando en consola,
+* y mover **Terraform al final**.
+
+Si ahora quieres, el siguiente micro-paso sería escribirte el `docs/gcp_datalake_structure.md` solo con la lista de rutas, sin toda la explicación. Así ya no te pierdes.
+
+
+# 📄 CHECKPOINT — GCP CNH ETL
+
+**Fecha:** miércoles 12 de noviembre de 2025
+**Autor:** Dr. Emmanuel Pérez Cabrera (DatAlquemy)
+**Ámbito:** Reestructura de buckets, carga inicial a *staging*, creación de tablas externas en BigQuery y acuerdos de limpieza (Bronze ↔ Silver).
+
+---
+
+## 1) Estructura de almacenamiento (GCS) — ✅ Hecho
+
+**Bucket:** `gs://da-port-cnh-dev`
+
+**Estructura acordada y creada:**
+
+```
+staging/
+  cnh/
+    oil/production/
+    gas/production/
+bronze/
+  oil/
+  gas/
+silver/
+  oil/
+  gas/
+gold/
+  oil/
+  gas/
+logs/
+```
+
+**Racional:** mantener *staging* separado (entrada cruda), y las capas Medallion listas para el ETL.
+
+---
+
+## 2) Ingesta a *staging* (carga manual) — ✅ Hecho
+
+Se subieron los archivos fuente (CSV) a:
+
+* `gs://da-port-cnh-dev/staging/cnh/oil/production/oil_production.csv`
+* `gs://da-port-cnh-dev/staging/cnh/gas/production/gas_production.csv`
+
+**Observaciones:**
+
+* Archivos con encabezado en la primera fila.
+* Delimitador: coma.
+* Fechas con formato `dd/MM/yyyy`.
+* Columnas numéricas con decimales (algunas cercanas a cero en años antiguos).
+
+---
+
+## 3) BigQuery — Dataset y Tablas Externas — ✅ Hecho
+
+**Dataset:** `cnh_staging` (ubicación por defecto del proyecto).
+
+**Tablas externas creadas (detección automática de esquema):**
+
+* `cnh_staging.oil_production_ext` → `gs://da-port-cnh-dev/staging/cnh/oil/production/*`
+* `cnh_staging.gas_production_ext` → `gs://da-port-cnh-dev/staging/cnh/gas/production/*`
+
+**Ajustes usados en el asistente:**
+
+* Tipo de fuente: Google Cloud Storage
+* Formato: CSV
+* Tabla: **externa**
+* Detección automática de esquema **activada**
+* Opciones avanzadas por defecto (delimitador coma, comillas dobles, encabezado no omitido)
+
+**Validaciones rápidas realizadas (Preview/Schema):**
+
+* `fecha` detectada como **DATE** (OK tras autodetección).
+* Claves de contexto (cuenca, ubicación, campo, operador) como **STRING**.
+* Medidas (p.ej. `liquidos_mbd`, `petroleo_mbd`, `condensado_mbd`, `gas_natural_sin_nitrogeno_mmpcd`, `nitrogeno_mmpcd`) como **FLOAT/STRING** según archivo; se corregirán en Bronze.
+
+---
+
+## 4) Decisiones de gobierno de datos — ✅ Acordadas
+
+### 4.1. Filosofía Bronze ↔ Silver
+
+* **Bronze = Limpieza estructural y física (NO negocio).**
+
+  * Conversión de tipos (STRING→DATE/FLOAT), *normalización mínima* de nombres y **sin filtros que alteren el significado**.
+  * **No** se reemplazan `NULL` por `0` en Bronze.
+  * **No** se descartan valores pequeños o cercanos a cero.
+
+* **Silver = Reglas de negocio y unificación.**
+
+  * Uniones Oil/Gas, *coalesce* y reglas semánticas (p.ej. tratar `NULL` como `0` solo si aplica).
+  * Criterios de “filtrado lógico” documentados (p. ej. excluir verdaderos ceros operativos en periodos recientes, pero **preservar** series históricas con valores bajos).
+
+### 4.2. Lección clave (evitar sesgo temporal)
+
+* **No filtrar “> 0” de forma global.** En periodos antiguos existen valores pequeños **válidos**.
+* Si se aplican filtros, será **en Silver** y **condicionados por contexto temporal** (ej. mantener históricos <1975).
+
+---
+
+## 5) Qué queda listo para mañana (Fase Bronze) — 🎯 Siguiente
+
+1. **Crear dataset `cnh_bronze`** (BigQuery).
+2. **Crear tablas físicas particionadas por `fecha` y clusterizadas por (`campo`, `operador`)**:
+
+   * `cnh_bronze.oil_production_bz`
+   * `cnh_bronze.gas_production_bz`
+3. **Transformación “Staging → Bronze” (solo estructural):**
+
+   * *Casting* de tipos (DATE/FLOAT), estandarizar nombres de columnas, **sin reemplazar nulos**, **sin filtrar ceros**.
+4. **Verificación de calidad (QC):**
+
+   * Conteos entre externa vs. Bronze.
+   * Muestreo de años antiguos (1960s–1970s) para confirmar preservación de valores pequeños.
+
+---
+
+## 6) Riesgos y controles — 🛡️
+
+* **Riesgo:** pérdida inadvertida de históricos por filtros agresivos.
+  **Control:** filtros solo en Silver + regla documentada (históricos se conservan).
+* **Riesgo:** *type mismatch* al castear.
+  **Control:** revisar *preview* y castear explícitamente en Bronze.
+* **Riesgo:** costos por tablas no particionadas.
+  **Control:** partición por `fecha` y *clustering* por (`campo`, `operador`).
+
+---
+
+## 7) Estado general — ✔️
+
+* GCS estructurado y *staging* cargado.
+* BigQuery con **dataset `cnh_staging`** y **tablas externas** operativas.
+* **Reglas de limpieza y gobierno** acordadas (Bronze ↔ Silver) para evitar sesgos.
+
+> Con esto, mañana arrancamos **Bronze** sobre bases sólidas y auditables, listos para iterar hacia **Silver** y, posteriormente, **Gold**.

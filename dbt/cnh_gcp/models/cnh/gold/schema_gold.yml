@@ -1,0 +1,119 @@
+version: 2
+
+models:
+
+  # -----------------------------
+  # Gold Diario
+  # -----------------------------
+  - name: resumen_produccion_diaria_gd
+    description: "Mart Gold diario de producción nacional (totales por fecha)."
+    tags: ['gold']
+
+    columns:
+      - name: fecha
+        description: "Fecha de producción."
+        tests:
+          - not_null
+          - unique
+
+      - name: total_petroleo_mbd
+        description: "Total diario de petróleo (miles de barriles por día)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+      - name: total_gas_mmpcd
+        description: "Total diario de gas (miles de millones de pies cúbicos por día)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+      - name: total_condensado_mbd
+        description: "Total diario de condensado (miles de barriles por día)."
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+  # -----------------------------
+  # Gold Mensual
+  # -----------------------------
+  - name: resumen_produccion_mensual_gd
+    description: "Mart Gold mensual por año/mes/cuenca/ubicacion/operador."
+    tags: ['gold']
+
+    columns:
+      - name: anio
+        tests: [not_null]
+
+      - name: mes
+        tests: [not_null]
+
+      - name: cuenca
+      - name: ubicacion
+      - name: operador
+
+      - name: total_petroleo_mes
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+      - name: total_gas_mes
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+      - name: total_condensado_mes
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+      - name: prom_diario_petroleo
+      - name: prom_diario_gas
+
+  # -----------------------------
+  # Gold Anual
+  # -----------------------------
+  - name: resumen_produccion_anual_gd
+    description: "Mart Gold anual por año/cuenca/ubicacion/operador."
+    tags: ['gold']
+
+    columns:
+      - name: anio
+        tests: [not_null]
+
+      - name: cuenca
+      - name: ubicacion
+      - name: operador
+
+      - name: total_petroleo_anual
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+      - name: total_gas_anual
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+
+      - name: total_condensado_anual
+        tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true

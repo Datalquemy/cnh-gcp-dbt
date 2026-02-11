@@ -1,0 +1,41 @@
+name: 'cnh_gcp'
+version: '1.0.0'
+config-version: 2
+
+profile: 'cnh_gcp'
+
+model-paths: ["models"]
+analysis-paths: ["analysis"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  cnh_gcp:
+    cnh:
+      staging:
+        +materialized: view
+        +schema: cnh_staging
+
+      bronze:
+        +materialized: table
+        +schema: cnh_bronze
+
+      silver:
+        +materialized: table
+        +schema: cnh_silver
+
+      gold:
+        +materialized: table
+        +schema: cnh_gold
+seeds:
+  cnh_gcp:       # Nombre de tu proyecto
+    +schema: cnh_silver
+    +quote_columns: false
+
+
