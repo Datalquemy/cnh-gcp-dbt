@@ -1,125 +1,137 @@
 version: 2
-
 models:
-  # -----------------------------
-  # Silver – Oil
-  # -----------------------------
-  - name: oil_production_sv
-    description: "Capa Silver de producción de petróleo y líquidos. Limpieza de nulos y preparación para unificación."
-    columns:
-      - name: fecha
-        description: "Fecha de producción."
-        tests:
-          - not_null
-
-      - name: campo
-        description: "Campo de producción."
-        tests:
-          - not_null
-
-      - name: operador
-        description: "Operador del campo."
-        tests:
-          - not_null
-
-      - name: petroleo_mbd
-        description: "Producción de petróleo (miles de barriles diarios)."
-        tests:
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                inclusive: true
-
-      - name: liquidos_mbd
-        description: "Producción de líquidos totales (miles de barriles diarios)."
-        tests:
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                inclusive: true
-
-      - name: condensado_mbd
-        description: "Producción de condensado (miles de barriles diarios)."
-        tests:
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                inclusive: true
-
-  # -----------------------------
-  # Silver – Gas
-  # -----------------------------
-  - name: gas_production_sv
-    description: "Capa Silver de producción de gas. Limpieza de nulos y normalización de métricas."
-    columns:
-      - name: fecha
-        description: "Fecha de producción."
-        tests:
-          - not_null
-
-      - name: campo
-        description: "Campo de producción."
-        tests:
-          - not_null
-
-      - name: operador
-        description: "Operador del campo."
-        tests:
-          - not_null
-
-      - name: gas_natural_sin_nitrogeno_mmpcd
-        description: "Gas natural sin nitrógeno (mmpcd)."
-        tests:
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                inclusive: true
-
-      - name: nitrogeno_mmpcd
-        description: "Nitrógeno (mmpcd)."
-        tests:
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                inclusive: true
-
-  # -----------------------------
-  # Silver – Producción unificada
-  # -----------------------------
-  - name: produccion_unificada_sv
-    description: "Tabla Silver unificada de producción de Oil + Gas por fecha, cuenca, ubicación, campo y operador."
+- name: oil_production_sv
+  description: Capa Silver de producción de petróleo (normalizada, gobernada por catálogo, deduplicada e incremental MERGE).
+  columns:
+  - name: id_registro_unico
+    description: 'Surrogate key determinística (TO_HEX(SHA256(...))) para el grain: anio|mes|cuenca|ubicacion|campo|operador.'
     tests:
-      - dbt_utils.unique_combination_of_columns:
-          combination_of_columns: ["fecha", "cuenca", "ubicacion", "campo", "operador"]
-
-    columns:
-      - name: fecha
-        description: "Fecha de producción."
-        tests:
-          - not_null
-
-      - name: campo
-        description: "Campo de producción."
-        tests:
-          - not_null
-
-      - name: operador
-        description: "Operador del campo."
-        tests:
-          - not_null
-
-      - name: produccion_liquidos_total_mbd
-        description: "Producción total de líquidos (petróleo + condensado)."
-        tests:
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                inclusive: true
-
-      - name: produccion_gas_total_mmpcd
-        description: "Producción total de gas (gas natural sin N2 + nitrógeno)."
-        tests:
-          - dbt_utils.accepted_range:
-              arguments:
-                min_value: 0
-                inclusive: true
+    - not_null
+    - unique
+  - name: fecha
+    description: Fecha (primer día del mes) usada como grano temporal de la tabla.
+    tests:
+    - not_null
+  - name: anio
+    description: Año derivado de la fecha (month_start).
+    tests:
+    - not_null
+  - name: mes
+    description: Mes (1-12) derivado de la fecha (month_start).
+    tests:
+    - not_null
+  - name: cuenca
+    description: Cuenca canónica (normalizada) proveniente del catálogo de campos.
+    tests:
+    - not_null
+  - name: ubicacion
+    description: Ubicación canónica (normalizada) proveniente del catálogo de campos.
+    tests:
+    - not_null
+  - name: campo
+    description: Campo canónico (normalizado a UPPER/TRIM).
+    tests:
+    - not_null
+  - name: operador
+    description: Operador canónico (normalizado a UPPER/TRIM).
+    tests:
+    - not_null
+  - name: petroleo_mbd
+    description: Producción de petróleo (mbd).
+  - name: liquidos_mbd
+    description: Producción de líquidos (mbd).
+  - name: condensado_mbd
+    description: Producción de condensado (mbd).
+  - name: _ingestion_timestamp_utc
+    description: Timestamp UTC de ingesta desde Bronze (usado para deduplicación).
+  - name: _source_filename
+    description: Nombre del archivo fuente en Bronze (usado para trazabilidad y deduplicación).
+  - name: _batch_id
+    description: Identificador de corrida/batch (run_id) heredado de Bronze.
+  - name: sv_ingestion_at
+    description: Timestamp de carga en Silver.
+- name: gas_production_sv
+  description: Capa Silver de producción de gas (normalizada, gobernada por catálogo, deduplicada e incremental MERGE).
+  columns:
+  - name: id_registro_unico
+    description: 'Surrogate key determinística (TO_HEX(SHA256(...))) para el grain: anio|mes|cuenca|ubicacion|campo|operador.'
+    tests:
+    - not_null
+    - unique
+  - name: fecha
+    description: Fecha (primer día del mes) usada como grano temporal de la tabla.
+    tests:
+    - not_null
+  - name: anio
+    description: Año derivado de la fecha (month_start).
+    tests:
+    - not_null
+  - name: mes
+    description: Mes (1-12) derivado de la fecha (month_start).
+    tests:
+    - not_null
+  - name: cuenca
+    description: Cuenca canónica (normalizada) proveniente del catálogo de campos.
+    tests:
+    - not_null
+  - name: ubicacion
+    description: Ubicación canónica (normalizada) proveniente del catálogo de campos.
+    tests:
+    - not_null
+  - name: campo
+    description: Campo canónico (normalizado a UPPER/TRIM).
+    tests:
+    - not_null
+  - name: operador
+    description: Operador canónico (normalizado a UPPER/TRIM).
+    tests:
+    - not_null
+  - name: gas_mmpcd
+    description: Producción de gas natural sin nitrógeno (mmpcd).
+  - name: nitrogeno_mmpcd
+    description: Producción de nitrógeno (mmpcd).
+  - name: _ingestion_timestamp_utc
+    description: Timestamp UTC de ingesta desde Bronze (usado para deduplicación).
+  - name: _source_filename
+    description: Nombre del archivo fuente en Bronze (usado para trazabilidad y deduplicación).
+  - name: _batch_id
+    description: Identificador de corrida/batch (run_id) heredado de Bronze.
+  - name: sv_ingestion_at
+    description: Timestamp de carga en Silver.
+- name: produccion_unificada_sv
+  description: Tabla Silver unificada de producción de Oil + Gas por fecha, cuenca, ubicación, campo y operador.
+  tests:
+  - dbt_utils.unique_combination_of_columns:
+      combination_of_columns:
+      - fecha
+      - cuenca
+      - ubicacion
+      - campo
+      - operador
+  columns:
+  - name: fecha
+    description: Fecha de producción.
+    tests:
+    - not_null
+  - name: campo
+    description: Campo de producción.
+    tests:
+    - not_null
+  - name: operador
+    description: Operador del campo.
+    tests:
+    - not_null
+  - name: produccion_liquidos_total_mbd
+    description: Producción total de líquidos (petróleo + condensado).
+    tests:
+    - dbt_utils.accepted_range:
+        arguments:
+          min_value: 0
+          inclusive: true
+  - name: produccion_gas_total_mmpcd
+    description: Producción total de gas (gas natural sin N2 + nitrógeno).
+    tests:
+    - dbt_utils.accepted_range:
+        arguments:
+          min_value: 0
+          inclusive: true
