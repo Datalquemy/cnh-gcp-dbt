@@ -33,9 +33,13 @@ models:
       gold:
         +materialized: table
         +schema: cnh_gold
+      ops:
+        +materialized: table
+        +schema: cnh_staging
 seeds:
   cnh_gcp:       # Nombre de tu proyecto
     +schema: cnh_silver
     +quote_columns: false
+
 
 

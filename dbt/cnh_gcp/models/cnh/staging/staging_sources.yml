@@ -16,6 +16,9 @@ sources:
         description: "Object Table de petróleo."
       - name: obj_gas_inventory
         description: "Object Table de gas."
+        # --- Sensor de Auditoría de Campos ---
+      - name: unknown_campos_audit
+        description: "Log de auditoría para detectar campos nuevos fuera de catálogo."
 
   - name: control_plane
     schema: cnh_staging
@@ -23,3 +26,4 @@ sources:
       - name: bronze_cnh_manifest
       - name: bronze_quarantine
       - name: dq_run_log_bronze
+      - name: unknown_campos_audit
