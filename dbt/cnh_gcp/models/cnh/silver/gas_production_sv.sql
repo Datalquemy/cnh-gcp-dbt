@@ -21,8 +21,9 @@ WITH src_gas AS (
     FROM {{ ref('gas_production_bz') }}
     
     -- 🛡️ REJECT: No negativos
-    WHERE gas_natural_sin_nitrogeno_mmpcd >= 0 
-      AND nitrogeno_mmpcd >= 0
+    WHERE 
+     COALESCE(gas_natural_sin_nitrogeno_mmpcd, 0) >= 0 
+      AND COALESCE(nitrogeno_mmpcd, 0) >= 0
 
     {% if is_incremental() %}
       --  Watermark con Sentinel Date 1900-01-01

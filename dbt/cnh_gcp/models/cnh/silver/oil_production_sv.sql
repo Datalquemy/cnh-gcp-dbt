@@ -22,9 +22,10 @@ WITH src_oil AS (
     FROM {{ ref('oil_production_bz') }}
     
     -- 🛡️ REJECT: No negativos (Regla de Contrato v3.1)
-    WHERE petroleo_mbd >= 0 
-      AND liquidos_mbd >= 0 
-      AND condensado_mbd >= 0
+    WHERE 
+      COALESCE(petroleo_mbd, 0) >= 0 
+      AND COALESCE(liquidos_mbd, 0) >= 0 
+      AND COALESCE(condensado_mbd, 0) >= 0
 
     {% if is_incremental() %}
       -- Watermark autónomo con Sentinel Date 1900-01-01
