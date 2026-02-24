@@ -7,7 +7,7 @@
       "data_type": "date",
       "granularity": "month"
     },
-    cluster_by = ["campo", "operador"]
+    cluster_by = ["cuenca","campo", "operador"]
 ) }}
 
 WITH src_gas AS (
@@ -15,6 +15,7 @@ WITH src_gas AS (
         *,
         UPPER(TRIM(campo))     AS campo_norm,
         UPPER(TRIM(operador))  AS operador_norm,
+        UPPER(TRIM(cuenca))    AS cuenca_norm,
         
         -- month_start canónico
         DATE(EXTRACT(YEAR FROM fecha), EXTRACT(MONTH FROM fecha), 1) AS month_start
@@ -62,6 +63,7 @@ refined AS (
         s.run_id AS _batch_id
     FROM src_gas s
     INNER JOIN catalog c ON s.campo_norm = c.campo
+                        AND s.cuenca_norm = c.cuenca_canonical -- REJECT fields out of domain
 ),
 
 dedupe AS (

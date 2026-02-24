@@ -7,7 +7,7 @@
       "data_type": "date",
       "granularity": "month"
     },
-    cluster_by = ["campo", "operador"]
+    cluster_by = ["cuenca","campo", "operador"]
 ) }}
 
 WITH oil AS (

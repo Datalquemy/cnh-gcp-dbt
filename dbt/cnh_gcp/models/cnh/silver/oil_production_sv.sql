@@ -7,7 +7,7 @@
       "data_type": "date",
       "granularity": "month"
     },
-    cluster_by = ["campo", "operador"]
+    cluster_by = ["cuenca", "campo", "operador"]
 ) }}
 
 WITH src_oil AS (
@@ -16,6 +16,7 @@ WITH src_oil AS (
         -- Normalizaciones de entrada (UPPER/TRIM)
         UPPER(TRIM(campo))     AS campo_norm,
         UPPER(TRIM(operador))  AS operador_norm,
+        UPPER(TRIM(cuenca))    AS cuenca_norm,
         
         --  month_start canónico para Grain y Watermark
         DATE(EXTRACT(YEAR FROM fecha), EXTRACT(MONTH FROM fecha), 1) AS month_start
@@ -65,7 +66,8 @@ refined AS (
         s.source_filename AS _source_filename,
         s.run_id AS _batch_id
     FROM src_oil s
-    INNER JOIN catalog c ON s.campo_norm = c.campo -- REJECT fields out of domain
+    INNER JOIN catalog c ON s.campo_norm = c.campo 
+                        AND s.cuenca_norm = c.cuenca_canonical -- REJECT fields out of domain
 ),
 
 dedupe AS (
