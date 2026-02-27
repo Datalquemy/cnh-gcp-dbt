@@ -74,7 +74,7 @@ dedupe AS (
     -- DETERMINISMO: Tie-breaker por ingestión (v3.1)
     SELECT *, 
         ROW_NUMBER() OVER (
-            PARTITION BY anio, mes, cuenca, ubicacion, campo, operador 
+            PARTITION BY anio, mes, cuenca, ubicacion, campo 
             ORDER BY _ingestion_timestamp_utc DESC, _source_filename DESC
         ) AS rn
     FROM refined
@@ -88,8 +88,8 @@ SELECT
         LPAD(CAST(mes AS STRING), 2, '0'), '|', 
         cuenca, '|', 
         ubicacion, '|', 
-        campo, '|', 
-        operador
+        campo 
+        --operador
     ))) AS id_registro_unico,
     CURRENT_TIMESTAMP() AS sv_ingestion_at
 FROM dedupe 
